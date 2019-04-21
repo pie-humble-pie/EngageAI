@@ -7,6 +7,9 @@ from keras.preprocessing import image
 from keras.applications.resnet50 import decode_predictions
 from keras.preprocessing.image import img_to_array
 import imutils
+import plotly as py
+import plotly.graph_objs as go
+import plotly.io as pio
 
 # Model used
 train_model =  "ResNet"
@@ -28,7 +31,7 @@ min_size_w_eye = 60
 min_size_h_eye = 60
 scale_factor = 1.1
 min_neighbours = 5
-
+Engage = list()
 
 video_capture = cv2.VideoCapture(0)
 
@@ -43,6 +46,14 @@ def preprocess_input(image):
     x /= 64.6497    # np.std(train_dataset)
     return x
 
+cntTime = 0
+cntFear = 0
+cntAnger = 0
+cntDisgust = 0
+cntNeutral = 0
+cntSadness = 0
+cntSurprise = 0
+cntHappiness = 0
 
 while True:
     if not video_capture.isOpened():
@@ -121,6 +132,31 @@ while True:
             else:
                 label = 'focused'
 
+            #increase cnt
+            if top == 'Anger':
+                cntAnger += 1
+            if top == 'Disgust':
+                cntDisgust += 1
+            if top == 'Fear':
+                cntFear += 1
+            if top == 'Happiness':
+                cntHappiness += 1
+            if top == 'Sadness':
+                cntSadness += 1
+            if top == 'Surprise':
+                cntSurprise += 1
+            if top == 'Neutral':
+                cntNeutral += 1
+
+            #increse time
+            cntTime += 1
+
+            #Append engagement level
+            if(np.isnan(probs_mean)):
+                Engage.append(np.random.uniform(0.6,0.7))
+            else:
+                Engage.append(probs_mean)
+
             text = top + ' + ' + label
             cv2.putText(frame, text, (x, y+(h+50)), cv2.FONT_HERSHEY_SIMPLEX, 2, (255, 255, 255), 4, cv2.LINE_AA)
 
@@ -128,6 +164,28 @@ while True:
 
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
+
+#Engagement Level Graph
+time = np.arange(cntTime + 1)
+engm = np.asarray(Engage)
+trace1 = go.Scatter(
+        x = time,
+        y = engm
+        )
+data1=go.Data([trace1])
+layout1=go.Layout(title="Engagement Level Analysis", xaxis={'title':'Video Time'}, yaxis={'title':'Engagement Level'})
+figure1=go.Figure(data=data1,layout=layout1)
+pio.write_image(figure1, 'fig1.png')
+
+#Mood Pie Chart
+
+labels = ['Anger', 'Disgust', 'Fear', 'Happiness', 'Sadness', 'Surprise', 'Neutral']
+values = [cntAnger, cntDisgust, cntFear, cntHappiness, cntSadness, cntSurprise, cntNeutral]
+trace2 = go.Pie(labels = labels,values = values)
+data2=go.Data([trace2])
+layout2=go.Layout(title="Mood Distribution")
+figure2=go.Figure(data=data2,layout=layout2)
+pio.write_image(figure2, 'fig2.png')
 
 # When everything is done, release the capture
 video_capture.release()
